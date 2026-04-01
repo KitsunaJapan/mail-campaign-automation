@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メールキャンペーン送信システム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:       #12120f;
+    --ink2:      #3a3a35;
+    --ink3:      #88887e;
+    --ink4:      #b8b8b0;
+    --bg:        #f5f4ef;
+    --bg2:       #eceae2;
+    --bg3:       #e2e0d6;
+    --surface:   #ffffff;
+    --accent:    #2d5a3d;
+    --accent2:   #3d7a54;
+    --accent-lt: #d8ece0;
+    --gold:      #c8922a;
+    --gold-lt:   #faf0dc;
+    --danger:    #b84040;
+    --danger-lt: #faeaea;
+    --info:      #2a5a8c;
+    --info-lt:   #dceaf5;
+    --border:    rgba(18,18,15,0.10);
+    --border2:   rgba(18,18,15,0.18);
+    --r:         10px;
+    --r2:        16px;
+    --mono:      'DM Mono', monospace;
+    --sans:      'Noto Sans JP', sans-serif;
+  }
+
+  body { font-family: var(--sans); background: var(--bg); color: var(--ink); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+  /* ── APP BAR ── */
+  .app-bar {
+    background: var(--ink); color: white;
+    padding: 0 28px; height: 56px;
+    display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 200;
+  }
+  .logo-mark {
+    width: 30px; height: 30px; background: var(--accent);
+    border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 15px; font-weight: 500; color: white;
+  }
+  .bar-title { font-size: 14px; font-weight: 500; }
+
+  .bar-steps {
+    display: flex; gap: 2px; margin-left: auto;
+    background: rgba(255,255,255,0.08); border-radius: 8px; padding: 3px;
+  }
+  .bar-step {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; color: rgba(255,255,255,0.4);
+    cursor: pointer; transition: all 0.15s;
+    border: none; background: none;
+  }
+  .bar-step.active { background: var(--accent); color: white; }
+  .bar-step.done   { color: rgba(255,255,255,0.65); }
+  .step-num {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-family: var(--mono); font-weight: 500; flex-shrink: 0;
+  }
+  .bar-step.active .step-num { background: rgba(255,255,255,0.25); }
+  .bar-step.done   .step-num { background: var(--accent); }
+
+  /* ── LAYOUT ── */
+  .main-wrap { max-width: 1060px; margin: 0 auto; padding: 28px 24px 60px; }
+  .step-view { display: none; }
+  .step-view.active { display: block; }
+
+  /* ── PANEL ── */
+  .panel { background: var(--surface); border-radius: var(--r2); border: 0.5px solid var(--border); overflow: hidden; margin-bottom: 16px; }
+  .panel-head { padding: 18px 24px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .panel-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .panel-title { font-size: 14px; font-weight: 500; }
+  .panel-sub   { font-size: 12px; color: var(--ink3); margin-top: 2px; }
+  .panel-body  { padding: 24px; }
+
+  /* ── FIELDS ── */
+  .field { margin-bottom: 18px; }
+  .field-label { font-size: 11px; font-weight: 500; color: var(--ink3); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 7px; display: block; }
+  .field-input {
+    width: 100%; padding: 10px 14px;
+    border: 0.5px solid var(--border2); border-radius: var(--r);
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+    background: var(--bg); outline: none; transition: border-color 0.15s, background 0.15s;
+  }
+  .field-input:focus { border-color: var(--accent); background: white; }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    padding: 11px 24px; background: var(--accent); color: white;
+    border: none; border-radius: var(--r);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-primary:hover    { background: var(--accent2); }
+  .btn-primary:disabled { opacity: 0.38; cursor: not-allowed; }
+  .btn-primary.full     { width: 100%; justify-content: center; }
+
+  .btn-dark {
+    padding: 13px 24px; background: var(--ink); color: white;
+    border: none; border-radius: var(--r);
+    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: background 0.15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-dark:hover    { background: var(--ink2); }
+  .btn-dark:disabled { opacity: 0.38; cursor: not-allowed; }
+  .btn-dark.full     { width: 100%; justify-content: center; }
+
+  .btn-ghost {
+    padding: 9px 18px; background: none;
+    border: 0.5px solid var(--border2); border-radius: var(--r);
+    font-family: var(--sans); font-size: 13px; color: var(--ink2);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-ghost:hover { background: var(--bg2); }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; border-radius: var(--r); border: 0.5px solid var(--border2); margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--bg2); padding: 9px 13px; text-align: left; font-size: 11px; font-weight: 500; color: var(--ink3); letter-spacing: 0.05em; border-bottom: 0.5px solid var(--border2); white-space: nowrap; }
+  tbody tr { border-bottom: 0.5px solid var(--border); transition: background 0.1s; }
+  tbody tr:last-child { border: none; }
+  tbody tr:hover { background: var(--bg); }
+  td { padding: 9px 13px; color: var(--ink2); }
+  td.mono { font-family: var(--mono); font-size: 11px; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-on  { background: var(--accent-lt); color: var(--accent); }
+
+  .count-row { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; }
+  .count-num { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--accent); }
+
+  /* ── UPLOAD ── */
+  .upload-zone {
+    border: 1.5px dashed var(--border2); border-radius: var(--r);
+    padding: 32px 20px; text-align: center;
+    cursor: pointer; transition: all 0.15s; background: var(--bg); position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-lt); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-text { font-size: 13px; font-weight: 500; color: var(--ink2); margin-top: 10px; }
+  .upload-hint { font-size: 11px; color: var(--ink3); margin-top: 4px; }
+  .file-ok { display: inline-flex; align-items: center; gap: 8px; background: var(--accent-lt); color: var(--accent); padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-top: 12px; }
+
+  /* ── STYLE CARDS ── */
+  .style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .style-card { border: 1.5px solid var(--border); border-radius: var(--r); padding: 14px 16px; cursor: pointer; transition: all 0.15s; }
+  .style-card:hover { border-color: var(--accent2); background: var(--accent-lt); }
+  .style-card.sel   { border-color: var(--accent); background: var(--accent-lt); }
+  .style-card-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .style-card-desc  { font-size: 11px; color: var(--ink3); }
+
+  /* ── PREVIEW ── */
+  .preview-bar { display: flex; align-items: center; gap: 8px; padding: 12px 18px; background: var(--bg); border-bottom: 0.5px solid var(--border); }
+  .ptab { padding: 5px 13px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 0.5px solid var(--border); background: var(--surface); color: var(--ink2); transition: all 0.15s; }
+  .ptab.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .iframe-wrap { background: var(--bg2); padding: 18px; }
+  .iframe-wrap iframe { width: 100%; min-height: 480px; border: none; background: white; border-radius: 8px; box-shadow: 0 2px 14px rgba(0,0,0,0.08); }
+  .code-view { background: #1a1a14; color: #c8c8b8; padding: 18px 20px; font-family: var(--mono); font-size: 11px; line-height: 1.8; min-height: 380px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+  .html-editor { width: 100%; min-height: 420px; padding: 18px 20px; font-family: var(--mono); font-size: 11px; line-height: 1.8; background: #1a1a14; color: #c8c8b8; border: none; resize: vertical; outline: none; }
+
+  /* ── SEND STEP ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg); border-radius: var(--r); padding: 16px; text-align: center; border: 0.5px solid var(--border); }
+  .stat-val   { font-family: var(--mono); font-size: 24px; font-weight: 500; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--ink3); margin-top: 4px; letter-spacing: 0.04em; }
+
+  .note { background: var(--gold-lt); border-left: 3px solid var(--gold); border-radius: 0 var(--r) var(--r) 0; padding: 12px 16px; font-size: 12px; color: #7a5810; line-height: 1.6; margin-bottom: 16px; }
+
+  .tab-group { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .dtab { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 0.5px solid var(--border2); background: var(--surface); color: var(--ink2); transition: all 0.15s; }
+  .dtab.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+  .gas-block { background: #1a1a14; border-radius: var(--r); padding: 16px 18px; font-family: var(--mono); font-size: 11px; line-height: 1.8; color: #a8d8a0; overflow: auto; max-height: 340px; cursor: pointer; }
+  .gas-block:hover { opacity: 0.9; }
+
+  .progress { height: 3px; background: var(--bg2); border-radius: 2px; overflow: hidden; margin-bottom: 10px; display: none; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; width: 0; }
+
+  .log-box { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--r); padding: 12px 14px; font-family: var(--mono); font-size: 11px; max-height: 200px; overflow-y: auto; line-height: 1.7; }
+  .log-ok   { color: var(--accent); }
+  .log-info { color: var(--info); }
+  .log-gold { color: var(--gold); }
+  .log-err  { color: var(--danger); }
+
+  /* ── DEPLOY GUIDE ── */
+  .guide-step { display: flex; gap: 16px; padding: 18px 0; border-bottom: 0.5px solid var(--border); }
+  .guide-step:last-child { border: none; }
+  .guide-num { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: white; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+  .guide-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .guide-desc  { font-size: 13px; color: var(--ink2); line-height: 1.7; }
+  code { font-family: var(--mono); font-size: 11px; background: var(--bg2); padding: 2px 7px; border-radius: 4px; border: 0.5px solid var(--border2); }
+  .ext-link { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; background: var(--info-lt); color: var(--info); border-radius: 6px; font-size: 12px; font-weight: 500; text-decoration: none; margin-top: 6px; }
+
+  /* ── SPINNER ── */
+  .spin-wrap { display: flex; align-items: center; gap: 10px; padding: 14px 0; color: var(--ink3); font-size: 13px; }
+  .spinner { width: 17px; height: 17px; border: 2px solid var(--bg3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ── TOAST ── */
+  #toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--ink); color: white; padding: 9px 20px; border-radius: 30px; font-size: 13px; font-weight: 500; opacity: 0; transition: all 0.22s; z-index: 9999; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── TWO COL ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 680px) {
+    .two-col, .style-grid, .stats-grid { grid-template-columns: 1fr; }
+    .bar-steps { display: none; }
+    .main-wrap { padding: 14px 12px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-bar">
+  <div class="logo-mark">M</div>
+  <span class="bar-title">メールキャンペーン送信システム</span>
+  <nav class="bar-steps">
+    <button class="bar-step active" id="nav0" onclick="goStep(0)"><span class="step-num">1</span>顧客データ</button>
+    <button class="bar-step"        id="nav1" onclick="goStep(1)"><span class="step-num">2</span>メール生成</button>
+    <button class="bar-step"        id="nav2" onclick="goStep(2)"><span class="step-num">3</span>送信 &amp; デプロイ</button>
+  </nav>
+</header>
+
+<div class="main-wrap">
+
+  <!-- ===== STEP 0 ===== -->
+  <div class="step-view active" id="step0">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon">📊</div>
+        <div>
+          <div class="panel-title">スプレッドシートから顧客データを取得</div>
+          <div class="panel-sub">B列：会社名　E列：担当者名　I列：メールアドレス</div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <div class="field-label">スプレッドシートID</div>
+            <input class="field-input" id="sheetId" style="font-size:11px"
+              placeholder="URLの /d/ と /edit の間の文字列"
+              value="1ugN2SlnT-6PWjZLhF-E4NOu34ifXKVj7NvY8gdizqMM">
+            <div style="font-size:11px;color:var(--ink3);margin-top:5px">
+              docs.google.com/spreadsheets/d/<strong>ここ</strong>/edit
+            </div>
+          </div>
+          <div>
+            <div class="field-label">シート名（タブ名）</div>
+            <input class="field-input" id="sheetName"
+              placeholder="顧客名簿サンプル_メルマガシステムを作ろう">
+          </div>
+        </div>
+        <button class="btn-primary" id="loadBtn" onclick="loadSheet()">
+          📥 データを取得する
+        </button>
+
+        <div id="loadSpinner" class="spin-wrap" style="display:none">
+          <div class="spinner"></div><span>スプレッドシートを読み込み中...</span>
+        </div>
+
+        <div id="tableWrap" style="display:none">
+          <div class="count-row">
+            <span class="count-num" id="countNum">0</span>
+            <span style="color:var(--ink2)">件の配信対象</span>
+            <span style="margin-left:auto;font-size:12px;color:var(--ink3)" id="totalCount"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>会社名</th><th>担当者名</th><th>メールアドレス</th><th>配信</th></tr></thead>
+              <tbody id="recipTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="btn-primary" id="toStep1Btn" onclick="goStep(1)" disabled>次へ：メール生成 →</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 1 ===== -->
+  <div class="step-view" id="step1">
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-icon">📄</div>
+          <div><div class="panel-title">PDFコンテンツ（任意）</div><div class="panel-sub">サービス資料・会社案内など</div></div>
+        </div>
+        <div class="panel-body">
+          <div class="upload-zone" id="pdfZone">
+            <input type="file" accept=".pdf" id="pdfInput" onchange="handlePDF(event)">
+            <div style="font-size:28px">📁</div>
+            <div class="upload-text">PDFをドロップ / クリック</div>
+            <div class="upload-hint">なしでもAIが文章を生成します</div>
+          </div>
+          <div id="pdfOk" style="display:none">
+            <div class="file-ok">✓ <span id="pdfName"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-icon">⚙️</div>
+          <div><div class="panel-title">メール設定</div></div>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <label class="field-label">件名</label>
+            <input class="field-input" id="subjectInput" value="たけまるクエストご入会のご案内">
+          </div>
+          <div class="field">
+            <label class="field-label">BCC</label>
+            <input class="field-input" id="bccInput" placeholder="myoboko@nagi.be">
+          </div>
+          <div class="field">
+            <label class="field-label">送信者名</label>
+            <input class="field-input" id="senderName" value="セミナー事務局">
+          </div>
+          <div class="field">
+            <label class="field-label">送信元メール</label>
+            <input class="field-input" id="fromEmail" value="school@artbytkm.company">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon">🎨</div>
+        <div><div class="panel-title">HTMLメールのデザインスタイル</div></div>
+      </div>
+      <div class="panel-body">
+        <div class="style-grid">
+          <div class="style-card sel" id="style-modern"  onclick="selStyle('modern')"><div class="style-card-title">✦ モダン・プロフェッショナル</div><div class="style-card-desc">洗練されたビジネス向け。紺×白×アクセント</div></div>
+          <div class="style-card"    id="style-warm"    onclick="selStyle('warm')"><div class="style-card-title">🌸 ウォーム・フレンドリー</div><div class="style-card-desc">温かみのある親しみやすいデザイン</div></div>
+          <div class="style-card"    id="style-bold"    onclick="selStyle('bold')"><div class="style-card-title">⚡ ボールド・インパクト</div><div class="style-card-desc">力強く印象的。ブラック×ゴールド</div></div>
+          <div class="style-card"    id="style-minimal" onclick="selStyle('minimal')"><div class="style-card-title">◻ シンプル・ミニマル</div><div class="style-card-desc">余白重視、タイポグラフィ重視</div></div>
+        </div>
+
+        <div id="genSpinner" class="spin-wrap" style="display:none">
+          <div class="spinner"></div><span>HTMLメールを生成中...</span>
+        </div>
+
+        <button class="btn-dark full" id="genBtn" onclick="generateEmail()">✨ AIでHTMLメールを生成する</button>
+      </div>
+    </div>
+
+    <div class="panel" id="previewPanel" style="display:none">
+      <div class="preview-bar">
+        <span style="font-size:13px;font-weight:500;margin-right:4px">プレビュー</span>
+        <button class="ptab active" id="pt-preview" onclick="switchPTab('preview')">📧 HTML</button>
+        <button class="ptab"        id="pt-code"    onclick="switchPTab('code')">〈/〉 コード</button>
+        <button class="ptab"        id="pt-edit"    onclick="switchPTab('edit')">✏ 編集</button>
+        <button class="btn-ghost" style="margin-left:auto;font-size:11px;padding:5px 12px" onclick="generateEmail()">🔄 再生成</button>
+      </div>
+      <div id="pt-preview-content" class="iframe-wrap"><iframe id="previewIframe" sandbox="allow-same-origin"></iframe></div>
+      <div id="pt-code-content"    class="code-view" style="display:none"></div>
+      <div id="pt-edit-content"    style="display:none"><textarea class="html-editor" id="htmlEditor" oninput="liveUpdate()"></textarea></div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="btn-ghost" onclick="goStep(0)">← 戻る</button>
+      <button class="btn-primary" id="toStep2Btn" onclick="goStep(2)" disabled>次へ：送信 / デプロイ →</button>
+    </div>
+  </div>
+
+  <!-- ===== STEP 2 ===== -->
+  <div class="step-view" id="step2">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon">🚀</div>
+        <div><div class="panel-title">送信確認 &amp; GASコード / デプロイ手順</div></div>
+      </div>
+      <div class="panel-body">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="sSendCount">0</div><div class="stat-label">送信先</div></div>
+          <div class="stat-card"><div class="stat-val" style="font-size:13px;line-height:1.4" id="sSubject">—</div><div class="stat-label">件名</div></div>
+          <div class="stat-card"><div class="stat-val" style="font-size:13px;line-height:1.4" id="sSender">—</div><div class="stat-label">送信者</div></div>
+        </div>
+
+        <div class="note">⚠️ 実際のメール送信はGASで行います。「GASコード」タブからコードをコピーしてお使いください。</div>
+
+        <div class="tab-group">
+          <button class="dtab active" id="dt-gas"    onclick="switchDeploy('gas')">📋 GASコード</button>
+          <button class="dtab"        id="dt-sim"    onclick="switchDeploy('sim')">▶ シミュレーション</button>
+          <button class="dtab"        id="dt-deploy" onclick="switchDeploy('deploy')">🌐 Renderデプロイ手順</button>
+        </div>
+
+        <!-- GAS -->
+        <div id="dd-gas">
+          <button class="btn-primary full" onclick="buildGAS()" style="margin-bottom:14px">📋 GASコードを生成する</button>
+          <div class="gas-block" id="gasBlock" onclick="copyGAS()" style="display:none"></div>
+          <div id="gasCopyHint" style="font-size:11px;color:var(--ink3);margin-top:6px;display:none">クリックでコピー</div>
+        </div>
+
+        <!-- シミュレーション -->
+        <div id="dd-sim" style="display:none">
+          <button class="btn-primary full" id="simBtn" onclick="runSim()" style="margin-bottom:12px">▶ 送信シミュレーションを実行</button>
+          <div class="progress" id="simProgress"><div class="progress-fill" id="simFill"></div></div>
+          <div class="log-box" id="simLog"><div class="log-info">待機中... シミュレーションボタンを押してください</div></div>
+        </div>
+
+        <!-- Renderデプロイ手順 -->
+        <div id="dd-deploy" style="display:none">
+          <div class="guide-step">
+            <div class="guide-num">1</div>
+            <div>
+              <div class="guide-title">このリポジトリをGitHubにプッシュ</div>
+              <div class="guide-desc">
+                ダウンロードしたファイル一式（<code>server.js</code>、<code>package.json</code>、<code>public/index.html</code>）をGitHubの新しいリポジトリにプッシュします。<br>
+                <code>.env</code>は <strong>絶対にプッシュしない</strong>でください（<code>.gitignore</code>に記載済み）。
+              </div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-num">2</div>
+            <div>
+              <div class="guide-title">Render で新しいWeb Serviceを作成</div>
+              <div class="guide-desc">
+                <a class="ext-link" href="https://render.com" target="_blank">render.com →</a><br>
+                「New +」→「Web Service」→ GitHubリポジトリを接続します。
+              </div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-num">3</div>
+            <div>
+              <div class="guide-title">ビルド設定を入力</div>
+              <div class="guide-desc">
+                <strong>Runtime:</strong> <code>Node</code><br>
+                <strong>Build Command:</strong> <code>npm install</code><br>
+                <strong>Start Command:</strong> <code>node server.js</code><br>
+                <strong>Instance Type:</strong> Free（無料プランで動作します）
+              </div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-num">4</div>
+            <div>
+              <div class="guide-title">環境変数を設定（最重要）</div>
+              <div class="guide-desc">
+                Renderダッシュボード →「Environment」タブ → 以下を追加：<br><br>
+                <code>ANTHROPIC_API_KEY</code> = <em>sk-ant-xxxxx</em><br>
+                <code>GOOGLE_API_KEY</code> = <em>AIzaSyxxxxx</em><br><br>
+                ここで設定したキーはコードに含まれず、安全に管理されます。
+              </div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-num">5</div>
+            <div>
+              <div class="guide-title">「Create Web Service」でデプロイ完了</div>
+              <div class="guide-desc">
+                数分でビルドが完了し、<code>https://your-app.onrender.com</code> のURLが発行されます。<br>
+                無料プランは15分で自動スリープしますが、アクセスすると自動で起動します。<br>
+                常時起動が必要な場合は有料プラン（$7/月〜）をご検討ください。
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <button class="btn-ghost" onclick="goStep(1)">← 戻る</button>
+    </div>
+  </div>
+
+</div><!-- /main-wrap -->
+<div id="toast"></div>
+
+<script>
+const STYLE_PROMPTS = {
+  modern:  'プロフェッショナルでモダン。ネイビー×ホワイト×グリーンアクセント、シャープなレイアウト、明確なCTAボタン',
+  warm:    '温かみのある親しみやすいデザイン。オレンジ・テラコッタ系カラー、丸みのあるレイアウト',
+  bold:    '力強くインパクト大。ブラック×ゴールドの高級感、大きなヘッドライン',
+  minimal: '余白を活かしたミニマルデザイン。グレースケール基調、タイポグラフィ重視',
+};
+
+let state = {
+  recipients: [],
+  pdfBase64:  null,
+  pdfMime:    'application/pdf',
+  emailHTML:  '',
+  style:      'modern',
+  step:       0,
+};
+
+// ── NAVIGATION ──────────────────────────────────────
+function goStep(n) {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('step' + i).classList.toggle('active', i === n);
+    const nav = document.getElementById('nav' + i);
+    nav.classList.remove('active', 'done');
+    if (i === n) nav.classList.add('active');
+    else if (i < n) nav.classList.add('done');
+  }
+  state.step = n;
+  if (n === 2) fillSummary();
+  window.scrollTo(0, 0);
+}
+
+// ── LOAD SHEET ──────────────────────────────────────
+async function loadSheet() {
+  const btn     = document.getElementById('loadBtn');
+  const spinner = document.getElementById('loadSpinner');
+  btn.disabled  = true;
+  spinner.style.display = 'flex';
+  document.getElementById('tableWrap').style.display = 'none';
+
+  const id   = document.getElementById('sheetId').value.trim();
+  const name = document.getElementById('sheetName').value.trim() || 'Sheet1';
+
+  if (!id) {
+    toast('スプレッドシートIDを入力してください');
+    spinner.style.display = 'none';
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    // サーバー側プロキシ経由で取得
+    const res  = await fetch(`/api/sheet?id=${encodeURIComponent(id)}&sheet=${encodeURIComponent(name)}`);
+    const data = await res.json();
+
+    if (data.error) { toast('⚠️ ' + data.error.message); return; }
+
+    const rows = (data.values || []).slice(1);
+    state.recipients = rows
+      .map(r => ({ company: r[1]||'', name: r[4]||'', email: r[8]||'' }))
+      .filter(r => r.email && r.email.includes('@'));
+
+    document.getElementById('countNum').textContent  = state.recipients.length;
+    document.getElementById('totalCount').textContent = `全 ${rows.length} 行中`;
+    renderTable();
+    document.getElementById('tableWrap').style.display    = 'block';
+    document.getElementById('toStep1Btn').disabled = state.recipients.length === 0;
+    toast(`${state.recipients.length}件の宛先を取得しました ✓`);
+
+  } catch (e) {
+    toast('通信エラー: ' + e.message);
+  } finally {
+    spinner.style.display = 'none';
+    btn.disabled = false;
+  }
+}
+
+function renderTable() {
+  document.getElementById('recipTable').innerHTML = state.recipients.map((r, i) => `
+    <tr>
+      <td class="mono">${i + 1}</td>
+      <td>${esc(r.company)}</td>
+      <td>${esc(r.name)}</td>
+      <td class="mono">${esc(r.email)}</td>
+      <td><span class="badge badge-on">配信</span></td>
+    </tr>`).join('');
+}
+
+// ── PDF ─────────────────────────────────────────────
+function handlePDF(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.pdfBase64 = ev.target.result.split(',')[1];
+    state.pdfMime   = file.type || 'application/pdf';
+    document.getElementById('pdfZone').style.display = 'none';
+    document.getElementById('pdfOk').style.display   = 'block';
+    document.getElementById('pdfName').textContent   = file.name;
+    toast('PDFを読み込みました');
+  };
+  reader.readAsDataURL(file);
+}
+
+const pdfZone = document.getElementById('pdfZone');
+pdfZone.addEventListener('dragover', e => { e.preventDefault(); pdfZone.classList.add('drag'); });
+pdfZone.addEventListener('dragleave', () => pdfZone.classList.remove('drag'));
+pdfZone.addEventListener('drop', e => {
+  e.preventDefault(); pdfZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') {
+    const dt = new DataTransfer(); dt.items.add(f);
+    document.getElementById('pdfInput').files = dt.files;
+    handlePDF({ target: { files: [f] } });
+  }
+});
+
+// ── STYLE ────────────────────────────────────────────
+function selStyle(s) {
+  state.style = s;
+  document.querySelectorAll('.style-card').forEach(c => c.classList.remove('sel'));
+  document.getElementById('style-' + s).classList.add('sel');
+}
+
+// ── GENERATE ─────────────────────────────────────────
+async function generateEmail() {
+  const btn     = document.getElementById('genBtn');
+  const spinner = document.getElementById('genSpinner');
+  btn.disabled  = true;
+  spinner.style.display = 'flex';
+
+  const subject    = document.getElementById('subjectInput').value;
+  const senderName = document.getElementById('senderName').value;
+  const prompt     = `以下の条件でHTMLメールを作成してください。
+
+件名: ${subject}
+送信者: ${senderName}
+デザインスタイル: ${STYLE_PROMPTS[state.style]}
+
+必須要件:
+- 完全なHTMLメール（<!DOCTYPE html>から始まる）
+- インラインCSS必須（メールクライアント互換）
+- レスポンシブ対応（max-width:600px）
+- WebSafeフォント使用
+- 会社名は {{company}}、担当者名は {{name}} というプレースホルダーを使用
+- ヘッダービジュアル、挨拶文、サービス紹介コンテンツ、CTAボタン、フッターを含める
+- 日本語で作成
+${state.pdfBase64 ? '- 添付PDFの内容をメール本文に自然に組み込む' : '- 「たけまるクエスト」というオンライン学習サービスの入会案内メールとして作成'}
+
+HTMLコードのみを出力してください（説明文・コードブロック記号不要）。`;
+
+  const messages = [{ role: 'user', content: [] }];
+  if (state.pdfBase64) {
+    messages[0].content.push({ type: 'document', source: { type: 'base64', media_type: state.pdfMime, data: state.pdfBase64 } });
+  }
+  messages[0].content.push({ type: 'text', text: prompt });
+
+  try {
+    // サーバー側プロキシ経由でAnthropicへ
+    const res  = await fetch('/api/generate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4096, messages }),
+    });
+    const data = await res.json();
+    let html = (data.content?.[0]?.text || '').trim();
+    html = html.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim();
+
+    state.emailHTML = html;
+    showPreview(html);
+    document.getElementById('toStep2Btn').disabled = false;
+    toast('HTMLメールを生成しました ✨');
+  } catch (e) {
+    toast('エラー: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+function showPreview(html) {
+  document.getElementById('previewPanel').style.display = 'block';
+  const iframe = document.getElementById('previewIframe');
+  const doc    = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+  document.getElementById('htmlEditor').value          = html;
+  document.getElementById('pt-code-content').textContent = html;
+  switchPTab('preview');
+}
+
+function switchPTab(t) {
+  ['preview','code','edit'].forEach(x => {
+    document.getElementById('pt-' + x).classList.toggle('active', x === t);
+    document.getElementById('pt-' + x + '-content').style.display = x === t ? 'block' : 'none';
+  });
+}
+
+function liveUpdate() {
+  state.emailHTML = document.getElementById('htmlEditor').value;
+  const iframe = document.getElementById('previewIframe');
+  const doc    = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(state.emailHTML); doc.close();
+}
+
+// ── SUMMARY ──────────────────────────────────────────
+function fillSummary() {
+  document.getElementById('sSendCount').textContent = state.recipients.length;
+  document.getElementById('sSubject').textContent   = document.getElementById('subjectInput').value || '—';
+  document.getElementById('sSender').textContent    = document.getElementById('senderName').value  || '—';
+}
+
+// ── DEPLOY TABS ──────────────────────────────────────
+function switchDeploy(t) {
+  ['gas','sim','deploy'].forEach(x => {
+    document.getElementById('dt-' + x).classList.toggle('active', x === t);
+    document.getElementById('dd-' + x).style.display = x === t ? 'block' : 'none';
+  });
+}
+
+// ── GAS CODE ─────────────────────────────────────────
+function buildGAS() {
+  const subject    = document.getElementById('subjectInput').value || 'たけまるクエストご入会のご案内';
+  const bcc        = document.getElementById('bccInput').value    || 'myoboko@nagi.be';
+  const fromEmail  = document.getElementById('fromEmail').value   || 'school@artbytkm.company';
+  const senderName = document.getElementById('senderName').value  || 'セミナー事務局';
+  const sheetId    = document.getElementById('sheetId').value.trim();
+  const sheetName  = document.getElementById('sheetName').value.trim() || 'Sheet1';
+  const html       = state.emailHTML.replace(/`/g,'\\`').replace(/\${/g,'\\${');
+
+  const code = `// =============================================
+// メールキャンペーン送信スクリプト
+// 生成日時: ${new Date().toLocaleString('ja-JP')}
+// =============================================
+
+const SHEET_ID   = '${sheetId}';
+const SHEET_NAME = '${sheetName}';
+const SUBJECT    = '${subject}';
+const FROM_EMAIL = '${fromEmail}';
+const FROM_NAME  = '${senderName}';
+const BCC        = '${bcc}';
+
+function sendCampaign() {
+  const sheet   = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  const rows    = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+
+  let sent = 0, skipped = 0, failed = 0;
+
+  for (const row of rows) {
+    const company = row[1]; // B列：会社名
+    const name    = row[4]; // E列：担当者名
+    const email   = row[8]; // I列：メールアドレス
+
+    if (!email || !email.includes('@')) { skipped++; continue; }
+
+    const options = {
+      name:     FROM_NAME,
+      from:     FROM_EMAIL,
+      bcc:      BCC,
+      htmlBody: getTemplate(company, name),
+    };
+
+    try {
+      GmailApp.sendEmail(email, SUBJECT, '※このメールはHTML形式です', options);
+      console.log('送信完了: ' + email);
+      sent++;
+      Utilities.sleep(300);
+    } catch (e) {
+      console.error('送信失敗: ' + email + ' — ' + e.message);
+      failed++;
+    }
+  }
+
+  SpreadsheetApp.getUi().alert(
+    \`完了\\n送信: \${sent}件 / スキップ: \${skipped}件 / エラー: \${failed}件\`
+  );
+}
+
+function getTemplate(company, name) {
+  const template = \`${html}\`;
+  return template
+    .replace(/{{company}}/g, company || '')
+    .replace(/{{name}}/g,    name    || '');
+}`;
+
+  document.getElementById('gasBlock').textContent     = code;
+  document.getElementById('gasBlock').style.display   = 'block';
+  document.getElementById('gasCopyHint').style.display = 'block';
+  toast('GASコードを生成しました');
+}
+
+function copyGAS() {
+  navigator.clipboard.writeText(document.getElementById('gasBlock').textContent)
+    .then(() => toast('コードをコピーしました ✓'));
+}
+
+// ── SIMULATION ───────────────────────────────────────
+async function runSim() {
+  const btn  = document.getElementById('simBtn');
+  const log  = document.getElementById('simLog');
+  const prog = document.getElementById('simProgress');
+  const fill = document.getElementById('simFill');
+  btn.disabled = true;
+  prog.style.display = 'block';
+  log.innerHTML = '';
+
+  const list = state.recipients.length > 0 ? state.recipients : [
+    { company:'株式会社サンプル', name:'田中太郎', email:'tanaka@example.com' },
+    { company:'テスト商事',       name:'佐藤花子', email:'sato@example.com'   },
+    { company:'デモ株式会社',     name:'鈴木一郎', email:'suzuki@example.com' },
+  ];
+
+  addLog(log, 'log-info', `シミュレーション開始 — ${list.length}件`);
+  for (let i = 0; i < list.length; i++) {
+    await sleep(350 + Math.random() * 200);
+    fill.style.width = Math.round((i + 1) / list.length * 100) + '%';
+    addLog(log, 'log-ok', `[${ts()}] ✓ ${list[i].company} ${list[i].name} <${list[i].email}>`);
+  }
+  addLog(log, 'log-gold', `[${ts()}] ✅ 完了 — ${list.length}件 シミュレーション終了`);
+  btn.disabled = false;
+  toast('シミュレーション完了 ✓');
+}
+
+// ── UTILS ────────────────────────────────────────────
+function addLog(el, cls, msg) {
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = msg;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function ts() { return new Date().toTimeString().slice(0,8); }
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
