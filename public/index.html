@@ -350,17 +350,24 @@
       </div>
       <div class="panel-body">
         <div class="style-grid">
-          <div class="style-card sel" id="style-modern"  onclick="selStyle('modern')"><div class="style-card-title">✦ モダン・プロフェッショナル</div><div class="style-card-desc">洗練されたビジネス向け。紺×白×アクセント</div></div>
-          <div class="style-card"    id="style-warm"    onclick="selStyle('warm')"><div class="style-card-title">🌸 ウォーム・フレンドリー</div><div class="style-card-desc">温かみのある親しみやすいデザイン</div></div>
-          <div class="style-card"    id="style-bold"    onclick="selStyle('bold')"><div class="style-card-title">⚡ ボールド・インパクト</div><div class="style-card-desc">力強く印象的。ブラック×ゴールド</div></div>
-          <div class="style-card"    id="style-minimal" onclick="selStyle('minimal')"><div class="style-card-title">◻ シンプル・ミニマル</div><div class="style-card-desc">余白重視、タイポグラフィ重視</div></div>
+          <div class="style-card sel" id="style-modern"  onclick="selStyle('modern')"><div class="style-card-title">モダン・プロフェッショナル</div><div class="style-card-desc">洗練されたビジネス向け。紺×白×アクセント</div></div>
+          <div class="style-card"    id="style-warm"    onclick="selStyle('warm')"><div class="style-card-title">ウォーム・フレンドリー</div><div class="style-card-desc">温かみのある親しみやすいデザイン</div></div>
+          <div class="style-card"    id="style-bold"    onclick="selStyle('bold')"><div class="style-card-title">ボールド・インパクト</div><div class="style-card-desc">力強く印象的。ブラック×ゴールド</div></div>
+          <div class="style-card"    id="style-minimal" onclick="selStyle('minimal')"><div class="style-card-title">シンプル・ミニマル</div><div class="style-card-desc">余白重視、タイポグラフィ重視</div></div>
+        </div>
+
+        <div class="field" style="margin-top:4px">
+          <label class="field-label">追加の要望・指示（任意）</label>
+          <textarea class="field-input" id="userPrompt" rows="4"
+            style="resize:vertical;line-height:1.7;font-family:var(--sans);font-size:13px"
+            placeholder="例：冒頭にBlender導入コスト削減の実績数字を強調してください。CTAボタンのテキストは「無料相談を申し込む」にしてください。トーンは丁寧なビジネス敬語で。"></textarea>
         </div>
 
         <div id="genSpinner" class="spin-wrap" style="display:none">
           <div class="spinner"></div><span>HTMLメールを生成中...</span>
         </div>
 
-        <button class="btn-dark full" id="genBtn" onclick="generateEmail()">✨ AIでHTMLメールを生成する</button>
+        <button class="btn-dark full" id="genBtn" onclick="generateEmail()">AIでHTMLメールを生成する</button>
       </div>
     </div>
 
@@ -620,6 +627,7 @@ async function generateEmail() {
 
   const subject    = document.getElementById('subjectInput').value;
   const senderName = document.getElementById('senderName').value;
+  const userPrompt = document.getElementById('userPrompt').value.trim();
   const prompt     = `以下の条件でHTMLメールを作成してください。
 
 件名: ${subject}
@@ -630,11 +638,13 @@ async function generateEmail() {
 - 完全なHTMLメール（<!DOCTYPE html>から始まる）
 - インラインCSS必須（メールクライアント互換）
 - レスポンシブ対応（max-width:600px）
-- WebSafeフォント使用
+- WebSafeフォント（Arial、Helvetica、Georgia等）のみ使用
 - 会社名は {{company}}、担当者名は {{name}} というプレースホルダーを使用
 - ヘッダービジュアル、挨拶文、サービス紹介コンテンツ、CTAボタン、フッターを含める
 - 日本語で作成
+- 絵文字・特殊記号（★☆■●◆など）は一切使用禁止。メールクライアントで文字化けするため、装飾はCSSのborder・background・paddingで表現すること
 ${state.pdfBase64 ? '- 添付PDFの内容をメール本文に自然に組み込む' : '- 「たけまるクエスト」というオンライン学習サービスの入会案内メールとして作成'}
+${userPrompt ? '\n追加の要望・指示:\n' + userPrompt : ''}
 
 HTMLコードのみを出力してください（説明文・コードブロック記号不要）。`;
 
