@@ -357,6 +357,20 @@
         </div>
 
         <div class="field" style="margin-top:4px">
+          <label class="field-label">定型文の挿入（チェックで本文に追加）</label>
+          <div style="display:flex;flex-direction:column;gap:10px;background:var(--bg);border-radius:var(--r);padding:14px 16px;border:0.5px solid var(--border2)">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:var(--ink2);line-height:1.6">
+              <input type="checkbox" id="phraseExpo" style="margin-top:3px;accent-color:var(--accent);width:15px;height:15px;flex-shrink:0">
+              <span>展示会で名刺交換をさせていただいた皆様にご案内です</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13px;color:var(--ink2);line-height:1.6">
+              <input type="checkbox" id="phraseOptout" style="margin-top:3px;accent-color:var(--accent);width:15px;height:15px;flex-shrink:0">
+              <span>配信停止をご希望の方はお手数ですが、info@kitsunajapan.comまでその旨お伝えください。配信停止には1週間ほどお時間を頂戴する場合がございます。行き違いの場合はご容赦くださいますようお願い申し上げます。</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:4px">
           <label class="field-label">追加の要望・指示（任意）</label>
           <textarea class="field-input" id="userPrompt" rows="4"
             style="resize:vertical;line-height:1.7;font-family:var(--sans);font-size:13px"
@@ -553,8 +567,9 @@ async function loadSheet() {
 
     const rows = (data.values || []).slice(1);
     state.recipients = rows
-      .map(r => ({ company: r[1]||'', name: r[4]||'', email: r[8]||'' }))
-      .filter(r => r.email && r.email.includes('@'));
+      .map(r => ({ company: r[1]||'', name: r[4]||'', email: r[8]||'', optout: r[11] }))
+      .filter(r => r.email && r.email.includes('@'))
+      .filter(r => r.optout !== true && String(r.optout).toUpperCase() !== 'TRUE');
 
     document.getElementById('countNum').textContent  = state.recipients.length;
     document.getElementById('totalCount').textContent = `全 ${rows.length} 行中`;
@@ -627,7 +642,12 @@ async function generateEmail() {
 
   const subject    = document.getElementById('subjectInput').value;
   const senderName = document.getElementById('senderName').value;
-  const userPrompt = document.getElementById('userPrompt').value.trim();
+  const userPrompt   = document.getElementById('userPrompt').value.trim();
+  const phraseExpo   = document.getElementById('phraseExpo').checked;
+  const phraseOptout = document.getElementById('phraseOptout').checked;
+  const phrases = [];
+  if (phraseExpo)   phrases.push('・冒頭（挨拶文の直後）に必ず次の一文を入れてください：「展示会で名刺交換をさせていただいた皆様にご案内です」');
+  if (phraseOptout) phrases.push('・フッターの直前に必ず次の配信停止文を入れてください（原文そのまま）：「配信停止をご希望の方はお手数ですが、info@kitsunajapan.comまでその旨お伝えください。配信停止には1週間ほどお時間を頂戴する場合がございます。行き違いの場合はご容赦くださいますようお願い申し上げます。」');
   const prompt     = `以下の条件でHTMLメールを作成してください。
 
 件名: ${subject}
@@ -644,7 +664,7 @@ async function generateEmail() {
 - 日本語で作成
 - 絵文字・特殊記号（★☆■●◆など）は一切使用禁止。メールクライアントで文字化けするため、装飾はCSSのborder・background・paddingで表現すること
 ${state.pdfBase64 ? '- 添付PDFの内容をメール本文に自然に組み込む' : '- 「たけまるクエスト」というオンライン学習サービスの入会案内メールとして作成'}
-${userPrompt ? '\n追加の要望・指示:\n' + userPrompt : ''}
+${phrases.length > 0 ? '\n定型文の挿入指示:\n' + phrases.join('\n') : ''}${userPrompt ? '\n\n追加の要望・指示:\n' + userPrompt : ''}
 
 HTMLコードのみを出力してください（説明文・コードブロック記号不要）。`;
 
@@ -750,7 +770,9 @@ function sendCampaign() {
     const name    = row[4]; // E列：担当者名
     const email   = row[8]; // I列：メールアドレス
 
+    const optout = row[11]; // L列：チェックボックス（TRUE=除外）
     if (!email || !email.includes('@')) { skipped++; continue; }
+    if (optout === true || String(optout).toUpperCase() === 'TRUE') { skipped++; continue; }
 
     const options = {
       name:     FROM_NAME,
