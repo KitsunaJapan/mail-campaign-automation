@@ -44,7 +44,7 @@ app.get('/api/sheet', async (req, res) => {
     return res.status(400).json({ error: { message: 'スプレッドシートIDを指定してください' } });
   }
 
-  const range = encodeURIComponent(`${sheetName}!A:J`);
+  const range = encodeURIComponent(`${sheetName}!A:L`); // L列（チェックボックス除外フラグ）まで取得
   const url   = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${GOOGLE_KEY}`;
 
   try {

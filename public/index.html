@@ -761,7 +761,7 @@ const BCC        = '${bcc}';
 function sendCampaign() {
   const sheet   = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
   const lastRow = sheet.getLastRow();
-  const rows    = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+  const rows    = sheet.getRange(2, 1, lastRow - 1, 12).getValues(); // L列（index11）まで取得
 
   let sent = 0, skipped = 0, failed = 0;
 
@@ -792,9 +792,15 @@ function sendCampaign() {
     }
   }
 
-  SpreadsheetApp.getUi().alert(
-    \`完了\\n送信: \${sent}件 / スキップ: \${skipped}件 / エラー: \${failed}件\`
-  );
+// 結果をログに記録
+  const resultMsg = \`完了 / 送信:\${sent}件 / スキップ:\${skipped}件 / エラー:\${failed}件\`;
+  console.log(resultMsg);
+  // スプレッドシートに紐付いている場合はダイアログ表示
+  try {
+    SpreadsheetApp.getUi().alert(resultMsg);
+  } catch(e) {
+    console.log('実行ログで結果を確認してください。');
+  }
 }
 
 function getTemplate(company, name) {
